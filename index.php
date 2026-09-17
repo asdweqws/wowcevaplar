@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>WOW Çözücü</title>
     
-    <!-- Mobil Uygulama (PWA) Meta Etiketleri -->
     <meta name="mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
@@ -84,29 +83,35 @@
                 }
 
                 const grid = data.crossword_grid;
-                const colCount = grid[0].length;
 
-                gridDisplay.style.gridTemplateColumns = `repeat(${colCount}, 44px)`;
+                // Tablo matrisi var ise çizdir
+                if (Array.isArray(grid) && grid.length > 0 && Array.isArray(grid[0])) {
+                    const colCount = grid[0].length;
+                    gridDisplay.style.gridTemplateColumns = `repeat(${colCount}, 44px)`;
 
-                grid.forEach(row => {
-                    row.forEach(char => {
-                        const cell = document.createElement('div');
-                        if (char !== "") {
-                            cell.className = 'cell filled';
-                            cell.textContent = char;
-                        } else {
-                            cell.className = 'cell empty';
-                        }
-                        gridDisplay.appendChild(cell);
+                    grid.forEach(row => {
+                        row.forEach(char => {
+                            const cell = document.createElement('div');
+                            if (char !== "") {
+                                cell.className = 'cell filled';
+                                cell.textContent = char;
+                            } else {
+                                cell.className = 'cell empty';
+                            }
+                            gridDisplay.appendChild(cell);
+                        });
                     });
-                });
+                }
 
-                data.kelimeler.forEach(w => {
-                    const badge = document.createElement('div');
-                    badge.className = 'word-badge';
-                    badge.textContent = w;
-                    wordsDisplay.appendChild(badge);
-                });
+                // Kelimeleri rozet olarak bas
+                if (Array.isArray(data.kelimeler)) {
+                    data.kelimeler.forEach(w => {
+                        const badge = document.createElement('div');
+                        badge.className = 'word-badge';
+                        badge.textContent = w;
+                        wordsDisplay.appendChild(badge);
+                    });
+                }
 
                 boardContainer.style.display = 'flex';
 
