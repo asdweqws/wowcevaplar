@@ -76,15 +76,17 @@
 
             try {
                 const targetUrl = `https://wordsofwonders.net/tr/?letters=${encodeURIComponent(bolum)}`;
-                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
+                // Güvenilir proxy servisi kullanılıyor
+                const proxyUrl = `https://api.allorigins.win/get?url=${encodeURIComponent(targetUrl)}&timestamp=${new Date().getTime()}`;
 
                 const res = await fetch(proxyUrl);
-                if (!res.ok) throw new Error("Veri çekilemedi, lütfen tekrar deneyin.");
+                if (!res.ok) throw new Error("Ağ hatası oluştu.");
                 
-                const htmlText = await res.text();
+                const data = await res.json();
+                if (!data || !data.contents) throw new Error("Veri alınamadı.");
 
                 const parser = new DOMParser();
-                const doc = parser.parseFromString(htmlText, 'text/html');
+                const doc = parser.parseFromString(data.contents, 'text/html');
 
                 // 1. Kelimeleri Çek
                 const words = [];
