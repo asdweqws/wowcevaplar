@@ -45,10 +45,10 @@
     <div class="search-card">
         <h2>🧩 WOW Çözücü</h2>
         <div class="input-group">
-            <input type="text" id="bolumInput" placeholder="Harfleri Girin" autocomplete="off" />
+            <input type="text" id="bolumInput" placeholder="Harfleri veya Bölüm No Girin" autocomplete="off" />
             <button onclick="sorgula()">Bul</button>
         </div>
-        <div id="loading">Kelime aranıyor...</div>
+        <div id="loading">Cevaplar çekiliyor...</div>
         <div id="error"></div>
     </div>
 
@@ -75,21 +75,66 @@
             wordsDisplay.innerHTML = '';
 
             try {
-                const res = await fetch(`api.php?bolum=${encodeURIComponent(bolum)}`);
-                const data = await res.json();
+                const targetUrl = `https://wordsofwonders.net/tr/?letters=${encodeURIComponent(bolum)}`;
+                const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(targetUrl)}`;
 
-                if (data.status !== 'success') {
-                    throw new Error(data.message || 'Veri bulunamadı.');
+                const res = await fetch(proxyUrl);
+                if (!res.ok) throw new Error("Veri çekilemedi, lütfen tekrar deneyin.");
+                
+                const htmlText = await res.text();
+
+                const parser = new DOMParser();
+                const doc = parser.parseFromString(htmlText, 'text/html');
+
+                // 1. Kelimeleri Çek
+                const words = [];
+                const wordContainer = doc.querySelector('.words');
+                if (wordContainer) {
+                    const htmlContent = wordContainer.innerHTML;
+                    const lines = htmlContent.split(/<br\s*\/?>/i);
+                    
+                    lines.forEach(line => {
+                        const tempDiv = document.createElement('div');
+                        tempDiv.innerHTML = line;
+                        const w = tempDiv.textContent.trim();
+                        if (w) words.push(w);
+                    });
                 }
 
-                const grid = data.crossword_grid;
+                // 2. Bulmaca Izgarasını Çek
+                const crossword = [];
+                const rows = doc.querySelectorAll('.crossword .crossword-row');
 
-                // Tablo matrisi var ise çizdir
-                if (Array.isArray(grid) && grid.length > 0 && Array.isArray(grid[0])) {
-                    const colCount = grid[0].length;
+                rows.forEach(row => {
+                    const letters = row.querySelectorAll('.letter');
+                    const rowCells = [];
+                    
+                    letters.forEach(letter => {
+                        const isHidden = letter.classList.contains('hidden');
+                        const val = letter.textContent.trim();
+                        
+                        if (isHidden || val === 'x' || val === '') {
+                            rowCells.push('');
+                        } else {
+                            rowCells.push(val.toUpperCase());
+                        }
+                    });
+                    
+                    if (rowCells.length > 0) {
+                        crossword.push(rowCells);
+                    }
+                });
+
+                if (words.length === 0 && crossword.length === 0) {
+                    throw new Error("Bu harflere/bölüme ait sonuç bulunamadı.");
+                }
+
+                // Grid Çizimi
+                if (crossword.length > 0 && crossword[0].length > 0) {
+                    const colCount = crossword[0].length;
                     gridDisplay.style.gridTemplateColumns = `repeat(${colCount}, 44px)`;
 
-                    grid.forEach(row => {
+                    crossword.forEach(row => {
                         row.forEach(char => {
                             const cell = document.createElement('div');
                             if (char !== "") {
@@ -103,25 +148,27 @@
                     });
                 }
 
-                // Kelimeleri rozet olarak bas
-                if (Array.isArray(data.kelimeler)) {
-                    data.kelimeler.forEach(w => {
-                        const badge = document.createElement('div');
-                        badge.className = 'word-badge';
-                        badge.textContent = w;
-                        wordsDisplay.appendChild(badge);
-                    });
-                }
+                // Kelimeleri Listele
+                words.forEach(w => {
+                    const badge = document.createElement('div');
+                    badge.className = 'word-badge';
+                    badge.textContent = w;
+                    wordsDisplay.appendChild(badge);
+                });
 
                 boardContainer.style.display = 'flex';
 
             } catch (err) {
-                error.textContent = err.message;
+                error.textContent = err.message || 'Veri çekilirken bir hata oluştu.';
                 error.style.display = 'block';
             } finally {
                 loading.style.display = 'none';
             }
         }
+
+        document.getElementById('bolumInput').addEventListener('keypress', function (e) {
+            if (e.key === 'Enter') sorgula();
+        });
     </script>
 </body>
 </html>
