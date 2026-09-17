@@ -1,7 +1,10 @@
 <?php
 header('Content-Type: application/json; charset=utf-8');
 
-if (!isset($_GET['bolum']) || empty($_GET['bolum'])) {
+error_reporting(0);
+ini_set('display_errors', 0);
+
+if (!isset($_GET['bolum']) || empty(trim($_GET['bolum']))) {
     http_response_code(400);
     echo json_encode(["status" => "error", "message" => "Lütfen bölüm adı/harfleri girin."], JSON_UNESCAPED_UNICODE);
     exit;
@@ -14,15 +17,27 @@ $ch = curl_init();
 curl_setopt($ch, CURLOPT_URL, $target_url);
 curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
 curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-curl_setopt($ch, CURLOPT_USERAGENT, 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36');
-curl_setopt($ch, CURLOPT_TIMEOUT, 10);
+
+// Sunucu engelini aşmak için detaylı Tarayıcı (User-Agent & Header) simülasyonu
+$headers = [
+    'User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/122.0.0.0 Safari/537.36',
+    'Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8',
+    'Accept-Language: tr-TR,tr;q=0.9,en-US;q=0.8,en;q=0.7',
+    'Cache-Control: no-cache',
+    'Pragma: no-cache'
+];
+
+curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
+curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, false);
+curl_setopt($ch, CURLOPT_TIMEOUT, 12);
 
 $html = curl_exec($ch);
+$httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
 curl_close($ch);
 
-if (empty($html)) {
+if (empty($html) || $httpCode !== 200) {
     http_response_code(500);
-    echo json_encode(["status" => "error", "message" => "Siteden yanıt alınamadı."], JSON_UNESCAPED_UNICODE);
+    echo json_encode(["status" => "error", "message" => "Siteden yanıt alınamadı veya engellendi."], JSON_UNESCAPED_UNICODE);
     exit;
 }
 
@@ -68,6 +83,13 @@ foreach ($rows as $row) {
     if (!empty($rowCells)) {
         $crossword[] = $rowCells;
     }
+}
+
+// Veri gelmediyse hata fırlat
+if (empty($words) && empty($crossword)) {
+    http_response_code(404);
+    echo json_encode(["status" => "error", "message" => "Bu harflere/bölüme ait sonuç bulunamadı."], JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
 echo json_encode([
